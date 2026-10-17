@@ -3,3 +3,4 @@ __pycache__
 .env
 *.wav
 pretrained_models
+data/
