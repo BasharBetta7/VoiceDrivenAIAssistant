@@ -27,7 +27,7 @@ flowchart TD
 1. [x] Specify the main modules.
 2. Run the full pipeline on local machine successfully (no bugs).
 3. The pipeline can now run a simple script from command.
-4. Incorporate the Speaker Verification and test it. 
+4. Incorporate the Speaker Verification and test it.
 5. The pipeline can add new tasks and respond to them. 
 6. Run the full evals to measure and optimize the performance of the baseline.
 7. Provide the UI for the pipeline.
@@ -35,3 +35,7 @@ flowchart TD
 9. CI/CD integration 
 10. Publish. 
 
+
+## Downsides:
+1. The speaker verfication contains high False Positives. And is prone to synthetic speaker imitation.
+FIX: sweep different thresholds and test it on available datasets
