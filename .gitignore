@@ -4,3 +4,5 @@ __pycache__
 *.wav
 pretrained_models
 data/
+.pytest_cache/
+agent_generated_scripts/

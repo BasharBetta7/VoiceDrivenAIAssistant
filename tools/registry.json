@@ -1,0 +1,90 @@
+{
+  "tools": [
+    {
+      "name": "add_numbers",
+      "description": "Add two numbers and return their sum.",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "a": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "A"
+          },
+          "b": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "B"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "ScriptArguments",
+        "type": "object"
+      },
+      "return_type": "int | float",
+      "id": "6d376059-2bfd-46bc-a2d6-13072db5e683",
+      "path": "agent_generated_scripts/add_numbers.py",
+      "entry_point": "add_numbers",
+      "status": "enabled",
+      "version": 1,
+      "sha256": "78040f4232b790714266939210d8edad8c5dcbc6bfbea4a12bb7e28d1b97a781"
+    },
+    {
+      "name": "main",
+      "description": "Main entry point for the script.\n\nReturns:\n    dict[str, float]: Result containing the square root of the product",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "ScriptArguments",
+        "type": "object"
+      },
+      "return_type": "dict[str, float]",
+      "id": "1eb940d3-f4e7-4c45-bcc0-90d305e1b642",
+      "path": "agent_generated_scripts/square_root_product.py",
+      "entry_point": "main",
+      "status": "pending_validation",
+      "version": 1,
+      "sha256": "d7d7159fc6f7c507e21624cdbfc8e9eb6d91ca32631e9e91465e386379e59b69"
+    },
+    {
+      "name": "fibonacci_calculator",
+      "description": "Calculate the Fibonacci number at a given index position.\n\nThe Fibonacci sequence starts with F(0)=0, F(1)=1, and each subsequent\nnumber is the sum of the two preceding ones.\n\nArgs:\n    index (int): The position in the Fibonacci sequence (0-indexed).\n    \nReturns:\n    int: The Fibonacci number at the specified index.\n    \nRaises:\n    ValueError: If index is negative.",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index"
+        ],
+        "title": "ScriptArguments",
+        "type": "object"
+      },
+      "return_type": "int",
+      "id": "6ce1f2b1-b877-4e10-985f-ff6ac96b1a98",
+      "path": "agent_generated_scripts/fibonacci_calculator.py",
+      "entry_point": "fibonacci_calculator",
+      "status": "pending_validation",
+      "version": 1,
+      "sha256": "f14622969c7c2fd15f31f5f11a2f335e2abb3e95d70dbddeceabded90e39d2ed"
+    }
+  ]
+}

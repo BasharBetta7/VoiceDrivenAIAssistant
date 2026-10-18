@@ -1,0 +1,6 @@
+speaker_classifier:
+  model_path: "./pretrained_models/spkrec-ecapa-voxceleb"
+  threshold: 0.45
+  enroll_trials: 2
+  enroll_duration: 10
+  
