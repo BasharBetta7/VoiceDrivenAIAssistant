@@ -85,6 +85,23 @@
       "status": "pending_validation",
       "version": 1,
       "sha256": "f14622969c7c2fd15f31f5f11a2f335e2abb3e95d70dbddeceabded90e39d2ed"
+    },
+    {
+      "name": "print_hello",
+      "description": "Print 'Hello World' in one line.",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "ScriptArguments",
+        "type": "object"
+      },
+      "return_type": "None",
+      "id": "1198e305-8c2c-4133-9135-1819d466685e",
+      "path": "agent_generated_scripts/hello_world.py",
+      "entry_point": "print_hello",
+      "status": "pending_validation",
+      "version": 1,
+      "sha256": "c0d200c80e3bea40ec78dfaac60bee0989c98cb55a714388579505908ddd3d25"
     }
   ]
 }

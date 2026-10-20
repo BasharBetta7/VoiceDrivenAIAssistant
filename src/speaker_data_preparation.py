@@ -34,5 +34,3 @@ for sample in dataset:
         n == clips_per_speaker for n in counts.values()
     ):
         break
-
-print(dict(counts))
