@@ -89,3 +89,4 @@ if __name__ == '__main__':
     audio, sr = record_audio(16000, 3)
     print(classifier.authorized_speaker(audio, sr))
     
+
