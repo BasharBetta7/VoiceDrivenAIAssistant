@@ -102,6 +102,31 @@
       "status": "pending_validation",
       "version": 1,
       "sha256": "c0d200c80e3bea40ec78dfaac60bee0989c98cb55a714388579505908ddd3d25"
+    },
+    {
+      "name": "calculate_square_root",
+      "description": "Calculate the square root of a number.\n\nArgs:\n    number (float): The number to find the square root of\n    \nReturns:\n    float: The square root of the number\n    \nRaises:\n    ValueError: If the number is negative",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "title": "Number",
+            "type": "number"
+          }
+        },
+        "required": [
+          "number"
+        ],
+        "title": "ScriptArguments",
+        "type": "object"
+      },
+      "return_type": "float",
+      "id": "658f41aa-1016-4cef-b5d9-1cc609e46b1b",
+      "path": "agent_generated_scripts/square_root.py",
+      "entry_point": "calculate_square_root",
+      "status": "pending_validation",
+      "version": 1,
+      "sha256": "1cf8c7b27f76989624166605cfc7c232380ce63fac649cce3cb407f05b09431f"
     }
   ]
 }

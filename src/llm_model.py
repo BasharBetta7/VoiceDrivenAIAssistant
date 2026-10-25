@@ -42,12 +42,6 @@ returned as error objects; read them and correct the request when appropriate.
         self.tools = build_registry_tools(self.registry)
     async def llm_chat(self, message: str, max_rounds: int = 8) -> list:
         mcp_config = {
-                "mcpServers": {
-                    "weather": {
-                        "command": "npx",
-                        "args": ["-y", "@dangahagan/weather-mcp"],
-                        "env": {"WEATHER_UNITS": "metric"},
-                    },
                     "sequential-thinking": {
                             "command": "npx",
                             "args": [
@@ -56,15 +50,13 @@ returned as error objects; read them and correct the request when appropriate.
                             ]
                     },
                 }
-            }
         async with MCPAdapter(mcp_config) as adapter:
             mcp_tools = await adapter.list_tools()
-            self.tools.extend(mcp_tools)
-            available = {registered_tool.name: registered_tool for registered_tool in (self.tools or [])}
+            available = {registered_tool.name: registered_tool for registered_tool in self.tools + mcp_tools}
             model_with_tools = self.chat.bind_tools(list(available.values()))
             self.messages.append(HumanMessage(content=message))
             for _ in range(max_rounds):
-                result = model_with_tools.invoke(self.messages)
+                result = await model_with_tools.ainvoke(self.messages)
                 self.messages.append(result)
                 if result.content:
                     print(f"[AGENT]: {result.content}")
