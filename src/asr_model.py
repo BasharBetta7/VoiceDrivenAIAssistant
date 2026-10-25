@@ -35,6 +35,7 @@ class SpeechRecognizer:
         return self.transcribe(audio)
     
     def transcribe(self, audio, language:str = 'English'):
+        
         return self.model.transcribe(audio, language=language)[0].text
     
 
