@@ -6,7 +6,6 @@ import torch
 import torch.nn.functional as F 
 
 
-
 DEFAULT_MODEL_PATH = "speechbrain/spkrec-ecapa-voxceleb"
 DEFAULT_THRESHOLD = 0.6
 
@@ -44,6 +43,7 @@ class SpeakerClassifier:
                 return
         print(f"You will be asked to speak {n_trials} times, each time you can say whatever you want for {duration} seconds, the model will save your voiceprint afterwards")
         embeddings = []
+
         for i in range(n_trials):
             input(f"Press Enter to Start trial {i+1}...")
             print(f"Trial number {i+1} : ")
