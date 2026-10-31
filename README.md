@@ -57,3 +57,10 @@ flowchart TD
 2. Can't access recent knowledge (offline)
 3. 
 
+## TODO:
+1. Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
+2. Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
+3. Create a secret phrase to launch the model, and sleep after long silence.
+4. Meausre the metrics : latency, correctness. And traces : token usage, prices .. etc.s
+
+

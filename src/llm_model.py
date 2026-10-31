@@ -13,12 +13,15 @@ from uuid import uuid4
 import json
 import asyncio
 import os
-
+import logging
+import warnings
+from langchain_core._api import LangChainBetaWarning
 from src.tool_registry import ScriptRegistry, build_registry_tools
 
 
+
 DEFAULTS = {'model':'qwen3.5:4b',
-            'temperature':0,
+            'temperature':0.3,
             'max_tokens':2048,
             }
 
@@ -68,7 +71,7 @@ returned as error objects; read them and correct the request when appropriate.
                 result = await model_with_tools.ainvoke(self.messages)
                 self.messages.append(result)
                 if result.content:
-                    print(f"[AGENT]: {result.content}")
+                    logging.debug("[AGENT]: %s",result.content)
                 if not result.tool_calls:
                     return self.messages
                 for call in result.tool_calls:

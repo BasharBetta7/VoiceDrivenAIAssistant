@@ -9,3 +9,4 @@ agent_generated_scripts/
 .db
 mlartifacts/
 llm_agent_cost_reduction/
+.vscode/

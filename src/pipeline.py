@@ -22,7 +22,7 @@ class VoiceAssistant:
 
 
    
-    def _listen(self):
+    def listen(self):
         # One event loop for the entire session, not one loop per utterance.
         asyncio.run(self._listen_async())
 
@@ -57,7 +57,7 @@ class VoiceAssistant:
                         print(f"YOU SAID: {text}")
                         await self.llm.llm_chat(text)
                     else:
-                        print("Unauthorized Speaker!")
+                        print("UNAUTHORIZED SPEAKER!")
                 except Exception:
                     logging.exception("Error while handling audio")
                 finally:
@@ -72,5 +72,5 @@ if __name__ == '__main__':
     with open('config.yaml','r') as f:
         config = yaml.safe_load(f)
     assistant = VoiceAssistant(config)
-    assistant._listen()
+    assistant.listen()
     

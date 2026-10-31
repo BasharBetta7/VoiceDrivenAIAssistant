@@ -4,7 +4,8 @@ import sounddevice as sd
 from scipy.io.wavfile import write
 import torch
 import torch.nn.functional as F 
-
+from pathlib import Path
+import src
 
 DEFAULT_MODEL_PATH = "speechbrain/spkrec-ecapa-voxceleb"
 DEFAULT_THRESHOLD = 0.6
@@ -75,9 +76,8 @@ class SpeakerClassifier:
         audio_dim = self.model.encode_batch(audio, normalize=False)[0]
         audio_dim = F.normalize(audio_dim, p=2, dim=-1)
         sim = F.cosine_similarity(audio_dim, self.authorized_speaker_embedding)
-        print(f"cos_sim = {sim.item(): .4f}")
         return sim.item() > self.spk_threshold
-
+        
 
 
 if __name__ == '__main__':

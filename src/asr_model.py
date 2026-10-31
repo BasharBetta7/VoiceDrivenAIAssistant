@@ -2,6 +2,7 @@ from qwen_asr import Qwen3ASRModel
 import torch
 import numpy as np
 from src.speaker_classifier import record_audio
+import src
 
 model = Qwen3ASRModel.from_pretrained(
     "Qwen/Qwen3-ASR-0.6B",
