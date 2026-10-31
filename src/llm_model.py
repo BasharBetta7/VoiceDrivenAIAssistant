@@ -4,13 +4,15 @@ from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AI
 from langchain_core.tools import tool, Tool
 from pydantic import BaseModel
 from langchain.mcp import MCPAdapter
+from langsmith import traceable
 
-
+from dotenv import load_dotenv
 import subprocess
 import sys 
 from uuid import uuid4
 import json
 import asyncio
+import os
 
 from src.tool_registry import ScriptRegistry, build_registry_tools
 
@@ -40,6 +42,13 @@ returned as error objects; read them and correct the request when appropriate.
         self.messages = [SystemMessage(content=self.sys_prompt)]
         self.registry = ScriptRegistry()
         self.tools = build_registry_tools(self.registry)
+
+    @traceable(name="llm_chat_no_tools", tags=["testing"])
+    def llm_chat_no_tools(self, message:str) -> str:
+        self.messages.append(HumanMessage(content=message))
+        response = self.chat.invoke(self.messages)
+        return response.content
+    
     async def llm_chat(self, message: str, max_rounds: int = 8) -> list:
         mcp_config = {
                     "sequential-thinking": {
@@ -82,7 +91,9 @@ returned as error objects; read them and correct the request when appropriate.
         
 
 if __name__ == '__main__':
+    load_dotenv()
+    os.environ['LANGSMITH_TRACING'] = "true"
     chat = LLMChat()
-    result = asyncio.run(chat.llm_chat('Hello, what is the age of the universe?'))
+    result = chat.llm_chat_no_tools('What is the square root of nine?')
     print(result)
     print(chat._get_messages())

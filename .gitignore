@@ -6,3 +6,6 @@ pretrained_models
 data/
 .pytest_cache/
 agent_generated_scripts/
+.db
+mlartifacts/
+llm_agent_cost_reduction/
