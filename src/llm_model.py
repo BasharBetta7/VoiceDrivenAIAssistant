@@ -17,6 +17,9 @@ import logging
 import warnings
 from langchain_core._api import LangChainBetaWarning
 from src.tool_registry import ScriptRegistry, build_registry_tools
+from langchain_core.prompts import ChatPromptTemplate
+
+
 
 
 
@@ -45,11 +48,13 @@ returned as error objects; read them and correct the request when appropriate.
         self.messages = [SystemMessage(content=self.sys_prompt)]
         self.registry = ScriptRegistry()
         self.tools = build_registry_tools(self.registry)
+        
 
     @traceable(name="llm_chat_no_tools", tags=["testing"])
     def llm_chat_no_tools(self, message:str) -> str:
         self.messages.append(HumanMessage(content=message))
         response = self.chat.invoke(self.messages)
+        self.messages.append(response)
         return response.content
     
     @traceable(name="voice_agent")
@@ -72,23 +77,30 @@ returned as error objects; read them and correct the request when appropriate.
                 result = await model_with_tools.ainvoke(self.messages)
                 self.messages.append(result)
                 if result.content:
-                    print("[AGENT]: %s",result.content)
+                    logging.info("[AGENT]:",result.content)
                 if not result.tool_calls:
                     return self.messages
                 for call in result.tool_calls:
-                    print(f"[TOOL CALL]: {call['name']}")
+                    logging.info(f"[TOOL CALL]: {call['name']}")
                     try:
                         registered_tool = available[call["name"]]
                         tool_result = await registered_tool.ainvoke(call["args"])
                     except Exception as exc:
                         tool_result = {"error": str(exc)}
-                    print(f"[OBS]: {tool_result}")
+                    logging.info(f"[OBS]: {tool_result}")
                     self.messages.append(ToolMessage(
                         content=json.dumps(tool_result), tool_call_id=call["id"]
                     ))
             raise RuntimeError("Agent reached its tool-call round limit.")
     def _get_messages(self):
         return self.messages.copy()
+
+    def flush_messages(self):
+        "Reset session, keeping system prompt"
+        self.messages = self.messages[:1]
+    def __str__(self):
+        return "\n\n".join([f"-- [{m.type.upper()}]: {m.content}" for m in self._get_messages() ])
+
 
 
 
