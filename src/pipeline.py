@@ -8,7 +8,7 @@ import speech_recognition as sr
 import asyncio
 import logging
 from src.utils import *
-
+from dotenv import load_dotenv
 
 class VoiceAssistant:
     def __init__(self, config:dict|None = None):
@@ -69,6 +69,7 @@ class VoiceAssistant:
 
 if __name__ == '__main__':
     import yaml
+    load_dotenv()
     with open('config.yaml','r') as f:
         config = yaml.safe_load(f)
     assistant = VoiceAssistant(config)

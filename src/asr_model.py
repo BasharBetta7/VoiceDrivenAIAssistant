@@ -4,14 +4,6 @@ import numpy as np
 from src.speaker_classifier import record_audio
 import src
 
-model = Qwen3ASRModel.from_pretrained(
-    "Qwen/Qwen3-ASR-0.6B",
-    dtype=torch.bfloat16,
-    device_map="cuda:0",
-    # attn_implementation="flash_attention_2",
-    max_inference_batch_size=32, # Batch size limit for inference. -1 means unlimited. Smaller values can help avoid OOM.
-    max_new_tokens=256, # Maximum number of tokens to generate. Set a larger value for long audio input.
-)
 
 DEFAULT_ASR_MODEL = 'Qwen/Qwen3-ASR-0.6B'
 
@@ -41,6 +33,15 @@ class SpeechRecognizer:
     
 
 if __name__ =='__main__':
+
+    model = Qwen3ASRModel.from_pretrained(
+        "Qwen/Qwen3-ASR-0.6B",
+        dtype=torch.bfloat16,
+        device_map="cuda:0",
+        # attn_implementation="flash_attention_2",
+        max_inference_batch_size=32, # Batch size limit for inference. -1 means unlimited. Smaller values can help avoid OOM.
+        max_new_tokens=256, # Maximum number of tokens to generate. Set a larger value for long audio input.
+    )
     asr_recognizer = SpeechRecognizer()
     input("when you're ready, press Enter and speak for 3 seconds")
     audio = record_audio(16000, 3)

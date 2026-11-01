@@ -65,7 +65,7 @@ class SpeakerClassifier:
     
     def authorized_speaker(self, audio, sr:int = 16000) -> bool:
         """Checks the similarity with the enrolled speaker """
-        assert self.authorized_speaker, "No authorized speakers to compare with, please enroll a speaker before verification"
+        assert self.authorized_speaker_embedding is not None, "No authorized speakers to compare with, please enroll a speaker before verification"
     
         if not isinstance(audio, torch.Tensor):
             audio = torch.tensor(audio, dtype=torch.float32)

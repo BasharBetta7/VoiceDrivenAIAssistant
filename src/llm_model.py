@@ -52,6 +52,7 @@ returned as error objects; read them and correct the request when appropriate.
         response = self.chat.invoke(self.messages)
         return response.content
     
+    @traceable(name="voice_agent")
     async def llm_chat(self, message: str, max_rounds: int = 8) -> list:
         mcp_config = {
                     "sequential-thinking": {
@@ -71,7 +72,7 @@ returned as error objects; read them and correct the request when appropriate.
                 result = await model_with_tools.ainvoke(self.messages)
                 self.messages.append(result)
                 if result.content:
-                    logging.debug("[AGENT]: %s",result.content)
+                    print("[AGENT]: %s",result.content)
                 if not result.tool_calls:
                     return self.messages
                 for call in result.tool_calls:
