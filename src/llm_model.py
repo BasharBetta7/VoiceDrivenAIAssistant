@@ -136,22 +136,28 @@ returned as error objects; read them and correct the request when appropriate.
             if not result.tool_calls:
                 return self.messages
             for call in result.tool_calls:
+                emit({
+                    "type":"status",
+                    "data":{
+                        "text":f"Running {call['name']}..."
+                    }
+                })
                 logging.info(f"[TOOL CALL]: {call['name']}")
                 try:
                     registered_tool = available[call["name"]]
-                    emit({
-                        "type":"tool_started",
-                        "data":{
-                            "name":call["name"],
-                        }
-                    })
+                    # emit({
+                    #     "type":"tool_started",
+                    #     "data":{
+                    #         "name":call["name"],
+                    #     }
+                    # })
                     tool_result = await registered_tool.ainvoke(call["args"])
-                    emit({
-                        "type":"tool_result",
-                        "data":{
-                            "result":f"{tool_result}"
-                        }
-                    })
+                    # emit({
+                    #     "type":"tool_result",
+                    #     "data":{
+                    #         "result":f"{tool_result}"
+                    #     }
+                    # })
                 except Exception as exc:
                     tool_result = {"error": str(exc)}
                 logging.info(f"[OBS]: {tool_result}")

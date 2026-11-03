@@ -1,6 +1,7 @@
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit import HTML
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
@@ -15,7 +16,7 @@ from src.events import *
 STATUS_MSG_STYLE = "dim"
 CONTENT_MSG_STYLE = "blue"
 console = Console(file=sys.stdout)
-status = console.status("Thinking...",)
+status = console.status("", spinner_style='cyan', spinner='dots')
 
 stream_display = None
 stream_text = ""
@@ -49,7 +50,7 @@ def render_event(event: AgentEvent) -> None:
 
     if event["type"] == "status":
         finish_stream()
-        status.update(data["text"])
+        status.update(f"[dim]{data["text"]}[/dim]", spinner_style="dim")
         status.start()
     else:
         status.stop()
@@ -64,17 +65,10 @@ def render_event(event: AgentEvent) -> None:
             else:
                 console.print(content, style=CONTENT_MSG_STYLE)
         elif event["type"] == "tool_started":
-            finish_stream()
-            console.print(
-                f"Running {data['name']}...",
-                style='cyan',
-                markup=False,
-            )
+           pass
 
         elif event["type"] == "tool_result":
-            console.print(data['result'],
-                          style='cyan',
-                          markup=False,)
+            pass
 
 
 
@@ -92,7 +86,8 @@ async def main():
         with patch_stdout(raw=True):
             while True:
                 try:
-                    text = (await session.prompt_async("You > ")).strip()
+                    text = (await session.prompt_async(
+                        HTML("<ansigreen><b>You &gt; </b></ansigreen>"))).strip()
                 except EOFError:
                     break
                 except KeyboardInterrupt:
@@ -107,10 +102,14 @@ async def main():
                     continue
                 if text == "/new":
                     agent.flush_messages()
+                    console.clear()
                     console.print("Started a new conversation.")
                     continue
                 if text == "/chathistory":
                     console.print(Markdown(str(agent)))
+                    continue
+                if text == "/clear":
+                    console.clear()
                     continue
                 if text.startswith("/"):
                     console.print("Unkown command. Use /help.")
