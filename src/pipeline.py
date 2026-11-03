@@ -1,24 +1,60 @@
 from src.speaker_classifier import SpeakerClassifier
 from src.llm_model import LLMChat
 from src.asr_model import SpeechRecognizer
+from src.events import AgentEvent, EventHandler
 
-import numpy as np
-import torch
 import speech_recognition as sr
 import asyncio
 import logging
-from src.utils import *
-from dotenv import load_dotenv
+from src.utils import convert_audio_to_numpy, convert_audio_to_tensor
+
 
 class VoiceAssistant:
-    def __init__(self, config:dict|None = None):
-        self.speaker_classifier = SpeakerClassifier(config['speaker_classifier'])
-        self.asr_model = SpeechRecognizer(config['speech_recognizer'])
-        self.llm = LLMChat(config['llm_model'])
+    def __init__(self, config:dict|None = None, llm=None):
+        config = config or {}
+        self.speaker_classifier = SpeakerClassifier(config.get('speaker_classifier'))
+        self.asr_model = SpeechRecognizer(config.get('speech_recognizer'))
+        self.llm = llm if llm is not None else LLMChat(config.get('llm_model'))
         self.speaker_classifier.enroll_speaker(n_trials=1, duration=10)
         self.recognizer = sr.Recognizer()
         self.recognizer.pause_threshold= 1.0 #1 second pause
         self.mic = sr.Microphone(sample_rate=16000)
+
+    def _capture_command(self):
+        # Open the microphone only for this command, with bounded waiting/recording.
+        with self.mic as source:
+            return self.recognizer.listen(source, timeout=5, phrase_time_limit=30)
+
+    async def transcribe_once(self, on_event: EventHandler | None = None):
+        """Capture and verify one phrase. Return None when no prompt is accepted."""
+        def emit(kind, text):
+            if on_event is not None:
+                on_event({"type": kind, "data": {"text": text}})
+
+        emit("status", "Listening... speak now (up to 30 seconds).")
+        try:
+            audio = await asyncio.to_thread(self._capture_command)
+        except sr.WaitTimeoutError:
+            emit("error_message", "No speech detected. Press F2 to try again.")
+            return None
+
+        emit("status", "Verifying speaker...")
+        authorized = await asyncio.to_thread(
+            self.speaker_classifier.authorized_speaker, convert_audio_to_tensor(audio)
+        )
+        if not authorized:
+            emit("error_message", "Sorry, I didn't recognize your voice as authorized.")
+            return None
+
+        emit("status", "Transcribing...")
+        text = (await asyncio.to_thread(
+            self.asr_model.transcribe, convert_audio_to_numpy(audio)
+        )).strip()
+        if not text:
+            emit("error_message", "No text recognized. Press F2 to try again.")
+            return None
+        emit("user_prompt", text)
+        return text
 
 
    
@@ -26,9 +62,12 @@ class VoiceAssistant:
         # One event loop for the entire session, not one loop per utterance.
         asyncio.run(self._listen_async())
 
-    async def _listen_async(self):
+    async def _listen_async(self, on_event :EventHandler|None = None):
         loop = asyncio.get_running_loop()
         audio_queue = asyncio.Queue(maxsize=8)
+        def emit(event:AgentEvent|None = None) -> None:
+            if on_event is not None:
+                on_event(event)
 
         def enqueue(audio):
             if audio_queue.full():
@@ -54,10 +93,20 @@ class VoiceAssistant:
                         text = await asyncio.to_thread(
                             self.asr_model.transcribe, convert_audio_to_numpy(audio)
                         )
-                        print(f"YOU SAID: {text}")
+                        emit({
+                            "type":"user_prompt",
+                            "data":{
+                                "text":text,
+                            }
+                        })
+                        #print(f"YOU SAID: {text}")
                         await self.llm.llm_chat(text)
                     else:
-                        print("UNAUTHORIZED SPEAKER!")
+                        emit({
+                            "type":"error_message",
+                            "data":{"text":"Sorry, I didn't recognize your voice as authorized."}
+                        })
+                        #print("UNAUTHORIZED SPEAKER!")
                 except Exception:
                     logging.exception("Error while handling audio")
                 finally:
@@ -68,10 +117,6 @@ class VoiceAssistant:
 
 
 if __name__ == '__main__':
-    import yaml
-    load_dotenv()
-    with open('config.yaml','r') as f:
-        config = yaml.safe_load(f)
-    assistant = VoiceAssistant(config)
-    assistant.listen()
+    from preuse.prompt_toolkit_test import main
+    asyncio.run(main())
     

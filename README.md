@@ -22,6 +22,20 @@ flowchart TD
 3. <b>LLM</b> with structured outputs, tools, and guardrails to respond to the commands as needed.
 4. <b>Evaluation Module </b>: to measure the performance of the overall assistant (pre-written tasks), the speaker verification (False Acceptance Rate, and False Rejection Rate), the ASR Module (Word Error Rate), Responsiveness (latency), and Resources.
 
+## Terminal input
+
+Run `bash run_pipeline.sh` (or `python -m preuse.prompt_toolkit_test`). Type a
+prompt and press Enter to send it, or press **F2** while the prompt is active to
+listen for one voice command. Recording stops after a one-second pause, with a
+five-second timeout waiting for speech and a 30-second limit per command.
+
+The first F2 press loads the voice models and starts voice enrollment. Follow
+the enrollment prompts, then speak when “Listening...” appears. Commands must
+pass speaker verification before transcription. Voice and text share the same
+conversation, and any unfinished typed prompt is restored after voice input.
+The microphone is closed between commands; F2 is a terminal shortcut, not a
+global hotkey. Use `/help` to list commands and Ctrl-D to exit.
+
 
 ## Checkpoints : 
 1. Specify the main modules. - [x] 
@@ -61,6 +75,6 @@ flowchart TD
 1. Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
 2. Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
 3. Create a secret phrase to launch the model, and sleep after long silence.
-4. Meausre the metrics : latency, correctness. And traces : token usage, prices .. etc.s
+4. Measure the metrics : latency, correctness. And traces : token usage, prices .. etc.
 
 

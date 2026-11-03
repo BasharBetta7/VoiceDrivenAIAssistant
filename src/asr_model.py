@@ -22,6 +22,11 @@ class SpeechRecognizer:
                         max_inference_batch_size=32, # Batch size limit for inference. -1 means unlimited. Smaller values can help avoid OOM.
                         max_new_tokens=256, # Maximum number of tokens to generate. Set a larger value for long audio input.
         )
+        # Qwen delegates generation to its thinker model. Set padding explicitly
+        # so Transformers does not log its EOS fallback for every transcription.
+        generation_config = self.model.model.thinker.generation_config
+        if generation_config.pad_token_id is None:
+            generation_config.pad_token_id = self.model.processor.tokenizer.eos_token_id
 
                 
     def __call__(self,audio:np.array ):
@@ -30,6 +35,9 @@ class SpeechRecognizer:
     def transcribe(self, audio, language:str = 'English'):
         
         return self.model.transcribe(audio, language=language)[0].text
+
+    def stream_transcribe(self, audio, language: str = 'English'):
+        self.model.streaming_transcribe()
     
 
 if __name__ =='__main__':

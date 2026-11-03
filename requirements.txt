@@ -3,3 +3,9 @@ langchain
 pydantic>=2,<3
 langchain-llama
 qwen-asr
+prompt_toolkit>=3,<4
+rich
+SpeechRecognition
+PyAudio
+python-dotenv
+PyYAML

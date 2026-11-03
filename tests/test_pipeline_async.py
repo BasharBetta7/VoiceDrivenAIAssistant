@@ -44,6 +44,55 @@ def load_pipeline():
 
 
 class PipelineAsyncTests(unittest.IsolatedAsyncioTestCase):
+    async def transcribe_phrase(self, authorized=True, transcript=" spoken command ", timeout=False):
+        pipeline = load_pipeline()
+        class WaitTimeoutError(Exception):
+            pass
+        pipeline.sr.WaitTimeoutError = WaitTimeoutError
+        assistant = pipeline.VoiceAssistant.__new__(pipeline.VoiceAssistant)
+        source = object()
+        assistant.mic = unittest.mock.MagicMock()
+        assistant.mic.__enter__.return_value = source
+        assistant.recognizer = SimpleNamespace(listen=Mock(
+            return_value="audio",
+            side_effect=WaitTimeoutError() if timeout else None,
+        ))
+        assistant.speaker_classifier = SimpleNamespace(authorized_speaker=Mock(return_value=authorized))
+        assistant.asr_model = SimpleNamespace(transcribe=Mock(return_value=transcript))
+        events = []
+        with (
+            patch.object(pipeline, "convert_audio_to_tensor", return_value="tensor"),
+            patch.object(pipeline, "convert_audio_to_numpy", return_value="numpy"),
+        ):
+            text = await assistant.transcribe_once(events.append)
+        assistant.recognizer.listen.assert_called_once_with(source, timeout=5, phrase_time_limit=30)
+        assistant.mic.__exit__.assert_called_once()
+        return text, events, assistant
+
+    async def test_single_phrase_closes_microphone_and_returns_verified_transcript(self):
+        text, events, assistant = await self.transcribe_phrase()
+        self.assertEqual(text, "spoken command")
+        assistant.speaker_classifier.authorized_speaker.assert_called_once_with("tensor")
+        assistant.asr_model.transcribe.assert_called_once_with("numpy")
+        self.assertEqual(events[-1], {"type": "user_prompt", "data": {"text": text}})
+
+    async def test_single_phrase_rejected_speaker_skips_transcription(self):
+        text, events, assistant = await self.transcribe_phrase(authorized=False)
+        self.assertIsNone(text)
+        assistant.asr_model.transcribe.assert_not_called()
+        self.assertEqual(events[-1]["type"], "error_message")
+
+    async def test_single_phrase_timeout_skips_verification(self):
+        text, events, assistant = await self.transcribe_phrase(timeout=True)
+        self.assertIsNone(text)
+        assistant.speaker_classifier.authorized_speaker.assert_not_called()
+        self.assertEqual(events[-1]["type"], "error_message")
+
+    async def test_single_phrase_empty_transcription_is_not_submitted(self):
+        text, events, _ = await self.transcribe_phrase(transcript="  ")
+        self.assertIsNone(text)
+        self.assertEqual(events[-1]["type"], "error_message")
+
     async def run_phrases(self, authorization, fail_first=False):
         pipeline = load_pipeline()
         loops = []
