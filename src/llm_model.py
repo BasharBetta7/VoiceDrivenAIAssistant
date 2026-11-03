@@ -1,6 +1,7 @@
 from langchain_ollama import ChatOllama
 from langchain.agents import create_agent
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import message_chunk_to_message
 from langchain_core.tools import tool, Tool
 from pydantic import BaseModel
 from langchain.mcp import MCPAdapter
@@ -8,7 +9,7 @@ from langsmith import traceable
 
 from dotenv import load_dotenv
 import subprocess
-import sys 
+import sys
 from uuid import uuid4
 import json
 import asyncio
@@ -18,7 +19,9 @@ import warnings
 from langchain_core._api import LangChainBetaWarning
 from src.tool_registry import ScriptRegistry, build_registry_tools
 from langchain_core.prompts import ChatPromptTemplate
+from src.events import *
 
+from contextlib import asynccontextmanager
 
 
 
@@ -47,51 +50,115 @@ returned as error objects; read them and correct the request when appropriate.
 """
         self.messages = [SystemMessage(content=self.sys_prompt)]
         self.registry = ScriptRegistry()
-        self.tools = build_registry_tools(self.registry)
-        
+        self.tools = build_registry_tools()
+        self.available = None
+        self.model_with_tools = None
 
-    @traceable(name="llm_chat_no_tools", tags=["testing"])
-    def llm_chat_no_tools(self, message:str) -> str:
-        self.messages.append(HumanMessage(content=message))
-        response = self.chat.invoke(self.messages)
-        self.messages.append(response)
-        return response.content
-    
-    @traceable(name="voice_agent")
-    async def llm_chat(self, message: str, max_rounds: int = 8) -> list:
+    @asynccontextmanager
+    async def session(self):
         mcp_config = {
-                    "sequential-thinking": {
-                            "command": "npx",
-                            "args": [
-                            "-y",
-                            "@modelcontextprotocol/server-sequential-thinking"
-                            ]
-                    },
-                }
+                            "sequential-thinking": {
+                                    "command": "npx",
+                                    "args": [
+                                    "-y",
+                                    "@modelcontextprotocol/server-sequential-thinking"
+                                    ]
+                            },
+                        }
         async with MCPAdapter(mcp_config) as adapter:
             mcp_tools = await adapter.list_tools()
-            available = {registered_tool.name: registered_tool for registered_tool in self.tools + mcp_tools}
-            model_with_tools = self.chat.bind_tools(list(available.values()))
-            self.messages.append(HumanMessage(content=message))
-            for _ in range(max_rounds):
-                result = await model_with_tools.ainvoke(self.messages)
-                self.messages.append(result)
-                if result.content:
-                    logging.info("[AGENT]:",result.content)
-                if not result.tool_calls:
-                    return self.messages
-                for call in result.tool_calls:
-                    logging.info(f"[TOOL CALL]: {call['name']}")
-                    try:
-                        registered_tool = available[call["name"]]
-                        tool_result = await registered_tool.ainvoke(call["args"])
-                    except Exception as exc:
-                        tool_result = {"error": str(exc)}
-                    logging.info(f"[OBS]: {tool_result}")
-                    self.messages.append(ToolMessage(
-                        content=json.dumps(tool_result), tool_call_id=call["id"]
-                    ))
-            raise RuntimeError("Agent reached its tool-call round limit.")
+            self.available = {
+                tool.name: tool for tool in self.tools + mcp_tools
+            }
+            self.model_with_tools = self.chat.bind_tools(list(self.available.values()))
+            try:
+                yield self
+            finally:
+                self.available = None
+                self.model_with_tools = None
+
+
+
+    @traceable(name="llm_chat_no_tools", tags=["testing"])
+    def llm_chat_no_tools(self, message:str, on_event:EventHandler | None = None) -> str:
+        def emit(event:AgentEvent) -> None:
+            if on_event is not None:
+                on_event(event)
+        self.messages.append(HumanMessage(content=message))
+        emit({"type":"status", "data":{"text":"Thinking..."}})
+        response = self.chat.invoke(self.messages)
+        self.messages.append(response)
+        if response.content:
+            emit({
+                "type":"message",
+                "data":{
+                    "content":response.content,
+                    "final": not bool(response.tool_calls),
+                }
+            })
+
+        return response.content
+
+    @traceable(name="voice_agent")
+    async def llm_chat(self, message: str, max_rounds: int = 8, on_event: EventHandler | None = None) -> list:
+        if self.available is None or self.model_with_tools is None:
+            raise RuntimeError("No activate session was opened. Make sure to run the agent inside 'async with agent.session()'")
+
+        def emit(event:AgentEvent) -> None:
+            if on_event is not None:
+                on_event(event)
+
+        available = self.available
+        model_with_tools = self.model_with_tools
+        self.messages.append(HumanMessage(content=message))
+        for _ in range(max_rounds):
+            emit({"type":"status", "data":{"text":"Thinking..."}})
+            combined = None
+            async for chunk in model_with_tools.astream(self.messages):
+                combined = chunk if combined is None else combined + chunk
+                if chunk.text:
+                    emit({"type": "message_delta", "data": {"text": chunk.text}})
+            if combined is None:
+                raise RuntimeError("The model returned an empty stream.")
+            # Tool arguments may span chunks. Execute only after assembly.
+            result = message_chunk_to_message(combined)
+            self.messages.append(result)
+            if result.content:
+                logging.info("[AGENT]: %s", result.content)
+                emit({
+                                "type":"message",
+                                "data":{
+                                    "content":result.content,
+                                    "final": not bool(result.tool_calls),
+                                    "streamed": True,
+                                }
+                            })
+            if not result.tool_calls:
+                return self.messages
+            for call in result.tool_calls:
+                logging.info(f"[TOOL CALL]: {call['name']}")
+                try:
+                    registered_tool = available[call["name"]]
+                    emit({
+                        "type":"tool_started",
+                        "data":{
+                            "name":call["name"],
+                        }
+                    })
+                    tool_result = await registered_tool.ainvoke(call["args"])
+                    emit({
+                        "type":"tool_result",
+                        "data":{
+                            "result":f"{tool_result}"
+                        }
+                    })
+                except Exception as exc:
+                    tool_result = {"error": str(exc)}
+                logging.info(f"[OBS]: {tool_result}")
+                self.messages.append(ToolMessage(
+                    content=json.dumps(tool_result), tool_call_id=call["id"]
+                ))
+        raise RuntimeError("Agent reached its tool-call round limit.")
     def _get_messages(self):
         return self.messages.copy()
 
@@ -104,7 +171,7 @@ returned as error objects; read them and correct the request when appropriate.
 
 
 
-        
+
 
 if __name__ == '__main__':
     load_dotenv()
