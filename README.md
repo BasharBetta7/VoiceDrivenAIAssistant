@@ -69,10 +69,9 @@ global hotkey. Use `/help` to list commands and Ctrl-D to exit.
 ### Limitations and guardrails:
 1. Can't execute scripts that contain certain dangerous commands 
 2. Can't access recent knowledge (offline)
-3. 
 
 ## TODO:
-1. Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
+1.[x] Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
 2. Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
 3. Create a secret phrase to launch the model, and sleep after long silence.
 4. Measure the metrics : latency, correctness. And traces : token usage, prices .. etc.
