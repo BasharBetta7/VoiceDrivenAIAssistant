@@ -21,6 +21,7 @@ flowchart TD
 2. <b>ASR Model</b>: pre-trained model to convert human speech to text.
 3. <b>LLM</b> with structured outputs, tools, and guardrails to respond to the commands as needed.
 4. <b>Evaluation Module </b>: to measure the performance of the overall assistant (pre-written tasks), the speaker verification (False Acceptance Rate, and False Rejection Rate), the ASR Module (Word Error Rate), Responsiveness (latency), and Resources.
+5. <b>TTS Module </b>: adds the ability to speak out the responce, with speech enrollment.
 
 ## Terminal input
 
@@ -71,9 +72,12 @@ global hotkey. Use `/help` to list commands and Ctrl-D to exit.
 2. Can't access recent knowledge (offline)
 
 ## TODO:
-1.[x] Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
-2. Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
+1. [x] Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
+2. [x]Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
 3. Create a secret phrase to launch the model, and sleep after long silence.
 4. Measure the metrics : latency, correctness. And traces : token usage, prices .. etc.
+5. Implement TTS Module:
+    - The inference is slow.
+    - process output in batches.
 
 

@@ -11,6 +11,12 @@ import sys
 import asyncio
 import os
 import logging
+from pathlib import Path
+import yaml
+from src.TTS_model import TTSModel
+import gc
+import torch
+
 os.environ["PROMPT_TOOLKIT_NO_CPR"] = "1"
 
 from src.llm_model import LLMChat
@@ -24,6 +30,7 @@ status = console.status("", spinner_style='cyan', spinner='dots')
 stream_display = None
 stream_text = ""
 VOICE_INPUT = object()
+
 
 
 def configure_cli_logging():
@@ -55,7 +62,7 @@ def finish_stream() -> None:
 
 
 def render_event(event: AgentEvent) -> None:
-    global stream_display, stream_text
+    global stream_display, stream_text, tts_model
     data = event["data"]
     if event["type"] == "message_delta":
         status.stop()
@@ -82,6 +89,8 @@ def render_event(event: AgentEvent) -> None:
         if event["type"] == "message":
             if data.get("streamed") and stream_display is not None:
                 finish_stream()
+                
+                #tts_model.speak(data['content'])
                 return
             content = data["content"]
             if isinstance(content, str):
@@ -104,12 +113,9 @@ def render_event(event: AgentEvent) -> None:
 async def main():
     load_dotenv()
     configure_cli_logging()
-    from pathlib import Path
-    import yaml
+   
 
-    with (Path(__file__).resolve().parents[1] / "config.yaml").open() as handle:
-        config = yaml.safe_load(handle) or {}
-    agent = LLMChat(config.get("llm_model"))
+   
     voice = None
     draft = Document()
 
@@ -189,5 +195,13 @@ async def main():
 
 
 if __name__ == "__main__":
-    load_dotenv()
-    asyncio.run(main())
+    try:
+        load_dotenv()
+        with (Path(__file__).resolve().parents[1] / "config.yaml").open() as handle:
+                config = yaml.safe_load(handle) or {}
+        agent = LLMChat(config.get("llm_model"))
+        tts_model = TTSModel(config.get('tts_model'))
+        asyncio.run(main())
+    finally:
+        gc.collect()
+        torch.cuda.empty_cache()

@@ -9,4 +9,11 @@ llm_model:
   model: "qwen3.5:4b"
   temperature: 0.0
   max_tokens: 2048
+tts_model:
+  model_name: "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+  device: "cuda:0"
+  dtype: "bfloat16"
+  ref_audio_path: "./audio_wavs/tts_ref_audio.wav"
+  ref_text: "Hello there! This a sample test."
+
   
