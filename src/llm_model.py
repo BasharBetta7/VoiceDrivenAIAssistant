@@ -20,6 +20,7 @@ from langchain_core._api import LangChainBetaWarning
 from src.tool_registry import ScriptRegistry, build_registry_tools
 from langchain_core.prompts import ChatPromptTemplate
 from src.events import *
+from src.tools import *
 
 from contextlib import asynccontextmanager
 
@@ -45,12 +46,12 @@ If no suitable tool exists, use write_script_tool to save a new script. Give
 its entry-point function typed named parameters, a return annotation, a clear
 docstring, and a JSON-serializable result. script_name has no path or extension.
 New scripts are pending_validation: explain that review and enabling are needed
-before execution. Never claim a pending script has run. Tool failures are
+before execution. google_search tool is used when you need to access web data in case you are not sure of the answer to the query. Never claim a pending script has run. Tool failures are
 returned as error objects; read them and correct the request when appropriate.
 """
         self.messages = [SystemMessage(content=self.sys_prompt)]
         self.registry = ScriptRegistry()
-        self.tools = build_registry_tools()
+        self.tools = [*build_registry_tools(), google_search]
         self.available = None
         self.model_with_tools = None
 
@@ -126,13 +127,13 @@ returned as error objects; read them and correct the request when appropriate.
             if result.content:
                 logging.info("[AGENT]: %s", result.content)
                 emit({
-                                "type":"message",
-                                "data":{
-                                    "content":result.content,
-                                    "final": not bool(result.tool_calls),
-                                    "streamed": True,
-                                }
-                            })
+                    "type":"message",
+                    "data":{
+                        "content":result.content,
+                        "final": not bool(result.tool_calls),
+                        "streamed": True,
+                    }
+                })
             if not result.tool_calls:
                 return self.messages
             for call in result.tool_calls:
