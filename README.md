@@ -1,5 +1,14 @@
 # AI Voice Assistant Project :
 ## GOAL : Design a user-specific voice assistant agent that can respond to audio commands.
+## The assistant helps organize projects, track progress, and answer questions about specific decisions made before by the user. 
+# Main tasks:
+- add notes about the current workspace.
+- retriever notes.
+- answer questions related to previous decisions.
+- Create routines based on the user's most repeated commands. 
+- Setup a timer
+- The ability to connect to external powerful LLMs to answer complicated questions.
+
 
 ## Baseline Pipeline: 
 ```mermaid
@@ -79,5 +88,6 @@ global hotkey. Use `/help` to list commands and Ctrl-D to exit.
 5. Implement TTS Module:
     - The inference is slow.
     - process output in batches.
+6. [ ] Fix the bug: when pressing F2 it fails every other time, with the message "Sorry, I didn't recognize your voice as authorized."
 
 

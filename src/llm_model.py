@@ -48,10 +48,11 @@ docstring, and a JSON-serializable result. script_name has no path or extension.
 New scripts are pending_validation: explain that review and enabling are needed
 before execution. google_search tool is used when you need to access web data in case you are not sure of the answer to the query. Never claim a pending script has run. Tool failures are
 returned as error objects; read them and correct the request when appropriate.
+search_local_file is used to search for a specific filename and give the user its contents.
 """
         self.messages = [SystemMessage(content=self.sys_prompt)]
         self.registry = ScriptRegistry()
-        self.tools = [*build_registry_tools(), google_search]
+        self.tools = [*build_registry_tools(), google_search, read_local_file]
         self.available = None
         self.model_with_tools = None
 

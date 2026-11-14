@@ -10,3 +10,4 @@ agent_generated_scripts/
 mlartifacts/
 llm_agent_cost_reduction/
 .vscode/
+voice-assistant/

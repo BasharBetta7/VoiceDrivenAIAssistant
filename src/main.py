@@ -88,8 +88,7 @@ def render_event(event: AgentEvent) -> None:
 
         if event["type"] == "message":
             if data.get("streamed") and stream_display is not None:
-                finish_stream()
-                
+                finish_stream()  
                 #tts_model.speak(data['content'])
                 return
             content = data["content"]
