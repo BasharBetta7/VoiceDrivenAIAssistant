@@ -18,6 +18,8 @@ from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
 import re
+import yaml
+from urllib.parse import quote
 
 
 
@@ -27,7 +29,51 @@ load_dotenv()
 DEFAULT_HUB_PATH = "~/.local/share/voice-assistant/hub"
 HUB_PATH = os.environ.get("VOICE_ASSISTANT_HUB_PATH", DEFAULT_HUB_PATH)
 
-hub_path = Path(HUB_PATH)
+hub_path = Path(HUB_PATH).expanduser()
+
+def _project_path(project_id: str) -> Path:
+    if not project_id or project_id in {".", ".."} or "/" in project_id or "\\" in project_id:
+        raise ValueError("project_id must be a single directory name.")
+    path = (hub_path / project_id).resolve()
+    if not path.is_relative_to(hub_path.resolve()):
+        raise ValueError("Project directory must remain inside the hub.")
+    return path
+
+
+def _note_title(content: str) -> str:
+    """Use the first nonempty content line when no title was supplied."""
+    return next((line.strip().lstrip("#").strip()[:100]
+                 for line in content.splitlines() if line.strip()), "Untitled note")
+
+
+def _read_note(content: str, fallback_id: str) -> dict:
+    # New notes use YAML front matter. Older notes used indented metadata.
+    metadata = {}
+    body = content
+    match = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", content, re.DOTALL)
+    if match:
+        parsed = yaml.safe_load(match.group(1))
+        metadata = parsed if isinstance(parsed, dict) else {}
+        body = content[match.end():].strip()
+    else:
+        header, separator, body = content.partition("# Content:")
+        if not separator:
+            body = content
+        for key in ("id", "title", "created_at"):
+            field = re.search(rf"^[ \t]*{key}:[ \t]*([^\r\n]+)", header, re.MULTILINE)
+            if field:
+                metadata[key] = field.group(1).strip().strip("\"'")
+    created_at = metadata.get("created_at")
+    return {"id": str(metadata.get("id") or fallback_id),
+            "title": str(metadata.get("title") or _note_title(body)),
+            "content": body.strip(),
+            "created_at": str(created_at) if created_at is not None else None}
+
+
+def _note_link(title: str, relative_path: str) -> str:
+    label = title.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
+    return f"[{label}]({quote(relative_path, safe='/')})"
+
 
 @tool
 def read_local_file(filename:str) -> str:
@@ -50,15 +96,15 @@ def google_search(query:str) -> dict:
 
 
 @tool
-def create_note(content:str, project_id:str | None = None, source_path:str | None = None, tags:list[str] | None  = None) :
+def create_note(content:str, project_id:str | None = None, source_path:str | None = None, tags:list[str] | None  = None, title:str | None = None) -> dict:
     """A tool to create a new user note in the hub.
     args:
     - content: the content of the note.
     - project_id: the project id.
     - source_path: the path to the project.
     - tags: a list of optional tags.
+    - title: a short descriptive title; defaults to the first nonempty content line.
     """
-    hub_path = Path(HUB_PATH)
     hub_path.mkdir(parents=True, exist_ok=True)
    
     if project_id is None:
@@ -66,7 +112,7 @@ def create_note(content:str, project_id:str | None = None, source_path:str | Non
     if source_path is None:
         source_path = str(Path.cwd())
 
-    project_path = hub_path / project_id
+    project_path = _project_path(project_id)
     project_path.mkdir(parents=True, exist_ok=True)
     index_path = hub_path / f"index.md"
     if not index_path.exists():
@@ -76,18 +122,10 @@ def create_note(content:str, project_id:str | None = None, source_path:str | Non
 
     timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
     note_id = uuid4()
-    note = f"""# Example Note 
-    ---
-    id: {note_id} 
-    project_id: {project_id}
-    created_at: {timestamp}
-    source: {source_path}
-    tags: {", ".join([t for t in tags])}
-    ---
-
-# Content:
-    This note is a demonstration.
-    """
+    title = " ".join(title.split()) if title and title.strip() else _note_title(content)
+    metadata = {"id": str(note_id), "title": title, "project_id": project_id,
+                "created_at": timestamp, "source": source_path, "tags": tags or []}
+    note = "---\n" + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True) + "---\n\n" + content + "\n"
 
     proj_content_header = f"""# Project Metadata:
     project_id: {project_id}
@@ -104,13 +142,15 @@ def create_note(content:str, project_id:str | None = None, source_path:str | Non
     if not proj_path_md.exists():
         with proj_path_md.open("x", encoding="utf-8") as file:
             file.write(proj_content_header)
-        with index_path.open("a", encoding="utf-8") as file:
-            file.write(f"[{datetime.now().astimezone().isoformat(timespec="seconds")}]: added [[{project_id}]] to {project_path}")
+    with index_path.open("a", encoding="utf-8") as file:
+        file.write(f"\n- {timestamp} — {_note_link(title, f'{project_id}/{note_id}.md')}\n")
     with proj_path_md.open("a", encoding="utf-8") as file:
-        file.write(f"[{datetime.now().astimezone().isoformat(timespec="seconds")}]: added [[{note_id}]] to {project_path}\n")
+        file.write(f"- {timestamp} — {_note_link(title, f'{note_id}.md')}\n")
 
-   
-   
+    return {"id": str(note_id), "title": title, "path": str(path), "created_at": timestamp}
+
+
+
 @tool
 def list_notes(project_id:str | None = None, limit:int =10) -> list:
     """A tool to list notes of the current project.
@@ -120,22 +160,19 @@ def list_notes(project_id:str | None = None, limit:int =10) -> list:
     notes = []
     if project_id is None:
         project_id = str(Path.cwd()).split("/")[-1]
-    project_path = hub_path / f"{project_id}"
+    project_path = _project_path(project_id)
     if not project_path.exists():
-        raise FileExistsError(f"No directory with the name {project_path} was found.")
-    for path in project_path.iterdir():
+        return []
+    if limit <= 0:
+        return []
+    for path in project_path.glob("*.md"):
         if path.is_file():
             if path.name == f"{project_id}.md":
                 continue
-            content = path.read_text()
-            match = re.search(r"^[ \t]*created_at:[ \t]*([^\r\n]+)", content, re.MULTILINE)
-            if match:
-                value = match.group(1).strip().strip("\"'")
-            else:
-                value = None
-            note_content = content.split("# Content")[-1]
-            notes.append((note_content, value))
-    return sorted(notes, key=lambda val: val[1], reverse=True)[limit-1::-1]
+            content = path.read_text(encoding="utf-8")
+            notes.append({**_read_note(content, path.stem), "path": str(path)})
+    return sorted(notes, key=lambda note: datetime.fromisoformat(note["created_at"]).timestamp()
+                  if note["created_at"] else float("-inf"), reverse=True)[:limit]
 
 @tool
 def search_note(query:str, project_id:str| None = None, limit:int = 10):
@@ -148,10 +185,10 @@ def search_note(query:str, project_id:str| None = None, limit:int = 10):
     if project_id is None:
         project_id = str(Path.cwd()).split("/")[-1]
     query_words = set(re.findall(r"\w+", query.casefold()))
-    if not query_words:
+    if not query_words or limit <= 0:
         return []
     results = []
-    for path in (hub_path / f"{project_id}" ).glob("*.md"):
+    for path in _project_path(project_id).glob("*.md"):
         if path.name == f"{project_id}.md":
             continue
 
@@ -161,7 +198,8 @@ def search_note(query:str, project_id:str| None = None, limit:int = 10):
         score = len(note_words & query_words)
         if score > 0:
             results.append({
-                'id': str(path).split("/")[-1][:-3],
+                'id': _read_note(content, path.stem)['id'],
+                'title': _read_note(content, path.stem)['title'],
                 'path': str(path),
                 'score': score,
                 'content': content,

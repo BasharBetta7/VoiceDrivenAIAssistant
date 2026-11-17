@@ -11,3 +11,5 @@ mlartifacts/
 llm_agent_cost_reduction/
 .vscode/
 voice-assistant/
+node_modules/
+*.json

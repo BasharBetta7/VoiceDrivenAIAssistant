@@ -62,6 +62,29 @@ class StreamingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent.messages[-1].content, "The result is 5.")
         self.assertIn("tool_started", [event["type"] for event in events])
 
+    async def test_blank_response_retries_without_empty_history_entry(self):
+        agent, events = await self.run_chat([
+            [AIMessageChunk(content="")],
+            [AIMessageChunk(content="No notes found.")],
+        ])
+        self.assertEqual(len(agent.messages), 3)
+        self.assertEqual(agent.messages[-1].content, "No notes found.")
+
+    async def test_repeated_blank_response_reports_failure(self):
+        with self.assertRaisesRegex(RuntimeError, "no answer or tool call"):
+            await self.run_chat([[AIMessageChunk(content="")], [AIMessageChunk(content="")]])
+
+    async def test_blank_after_note_tool_does_not_repeat_tool(self):
+        note_tool = SimpleNamespace(ainvoke=AsyncMock(return_value=[]))
+        await self.run_chat([
+            [AIMessageChunk(content="", tool_call_chunks=[{
+                "name": "list_notes", "args": "{}", "id": "notes-1", "index": 0,
+            }])],
+            [AIMessageChunk(content="")],
+            [AIMessageChunk(content="No notes found.")],
+        ], {"list_notes": note_tool})
+        note_tool.ainvoke.assert_awaited_once_with({})
+
     async def test_empty_stream_reports_failure(self):
         with self.assertRaisesRegex(RuntimeError, "empty stream"):
             await self.run_chat([[]])
