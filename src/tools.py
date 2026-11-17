@@ -67,7 +67,8 @@ def _read_note(content: str, fallback_id: str) -> dict:
     return {"id": str(metadata.get("id") or fallback_id),
             "title": str(metadata.get("title") or _note_title(body)),
             "content": body.strip(),
-            "created_at": str(created_at) if created_at is not None else None}
+            "created_at": str(created_at) if created_at is not None else None,
+            "updated_at": str(metadata["updated_at"]) if metadata.get("updated_at") else None}
 
 
 def _note_link(title: str, relative_path: str) -> str:
@@ -211,14 +212,63 @@ def search_note(query:str, project_id:str| None = None, limit:int = 10):
     
 
 @tool
-def update_note(note_id: str, content:str, tags: list[str] = []):
-    """A tool to update a written note with new content.
-    args:
-    - note_id: the id of the note to update.
-    - content: the new content.
-    - tags: a list of tags.
-    """
+def update_note(note_id: str, content: str, tags: list[str] | None = None) -> dict:
+    """Replace a note's complete body by its exact ID, searching all hub projects.
 
+    Obtain the ID from list_notes or search_note. Preserve ID, title, creation
+    time and source. Omit tags to preserve them; pass [] to clear them.
+    Returns updated note metadata, or an error if the ID is missing or ambiguous.
+    """
+    if not note_id.strip():
+        return {"error": "note_id must not be empty."}
+    matches = []
+    root = hub_path.resolve()
+    for path in hub_path.glob("*/*.md"):
+        if path.name == f"{path.parent.name}.md" or not path.is_file():
+            continue
+        if not path.resolve().is_relative_to(root):
+            continue
+        original = path.read_text(encoding="utf-8")
+        parsed = _read_note(original, path.stem)
+        if parsed["id"] == note_id:
+            matches.append((path, original, parsed))
+    if not matches:
+        return {"error": f"No note found with ID {note_id!r}."}
+    if len(matches) != 1:
+        return {"error": f"Multiple notes have ID {note_id!r}; resolve the duplicate ID before updating."}
+
+    path, original, parsed = matches[0]
+    front = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", original, re.DOTALL)
+    if front:
+        metadata = yaml.safe_load(front.group(1)) or {}
+    else:
+        # Preserve legacy metadata while migrating this note to YAML front matter.
+        metadata = {}
+        header = original.partition("# Content:")[0]
+        for key, value in re.findall(r"^[ \t]*([\w]+):[ \t]*([^\r\n]+)", header, re.MULTILINE):
+            metadata[key] = value.strip().strip("\"'")
+    metadata.setdefault("id", parsed["id"])
+    metadata.setdefault("title", parsed["title"])
+    if tags is not None:
+        metadata["tags"] = tags
+    metadata["updated_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    updated = "---\n" + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True) + "---\n\n" + content + "\n"
+
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         suffix=".tmp", delete=False) as file:
+            temporary = Path(file.name)
+            file.write(updated)
+            file.flush()
+            os.fsync(file.fileno())
+        temporary.chmod(path.stat().st_mode & 0o777)
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return {"id": parsed["id"], "title": metadata["title"], "path": str(path),
+            "updated_at": metadata["updated_at"]}
 
 
 

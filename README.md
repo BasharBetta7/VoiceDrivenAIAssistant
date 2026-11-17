@@ -89,5 +89,4 @@ global hotkey. Use `/help` to list commands and Ctrl-D to exit.
     - The inference is slow.
     - process output in batches.
 6. [ ] Fix the bug: when pressing F2 it fails every other time, with the message "Sorry, I didn't recognize your voice as authorized."
-
-
+7. [ ] Bug in the LLM: sometime when I ask to list the notes, it returns blank response. This might be a problem with qwen model.
