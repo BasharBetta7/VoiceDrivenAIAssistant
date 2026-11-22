@@ -13,3 +13,5 @@ llm_agent_cost_reduction/
 voice-assistant/
 node_modules/
 *.json
+AGENTS.md
+*.log
