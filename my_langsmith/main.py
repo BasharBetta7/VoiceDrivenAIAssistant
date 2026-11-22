@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage
 
 from my_langsmith.config import ls_client
 from my_langsmith.dataset import DATASET_NAME
-from my_langsmith.judge import helpfulness
+from my_langsmith.judge import helpfulness,correctness
 from src.llm_model import LLMChat
 
 async def main():
@@ -29,7 +29,7 @@ async def main():
         await ls_client.aevaluate(
             target,
             data=DATASET_NAME,
-            evaluators=[helpfulness],
+            evaluators=[helpfulness, correctness],
             experiment_prefix="voice-agent-text-baseline",
             max_concurrency=1,
             metadata= {
