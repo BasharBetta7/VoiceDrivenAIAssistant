@@ -8,7 +8,7 @@ from pathlib import Path
 import src
 
 DEFAULT_MODEL_PATH = "speechbrain/spkrec-ecapa-voxceleb"
-DEFAULT_THRESHOLD = 0.6
+DEFAULT_THRESHOLD = 0.
 
 
 def record_audio(sr, duration) :

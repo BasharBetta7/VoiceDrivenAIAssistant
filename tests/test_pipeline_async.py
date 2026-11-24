@@ -44,28 +44,58 @@ def load_pipeline():
 
 
 class PipelineAsyncTests(unittest.IsolatedAsyncioTestCase):
+    async def test_repeated_capture_calibrates_once_but_signals_ready_every_time(self):
+        pipeline = load_pipeline()
+        assistant = pipeline.VoiceAssistant.__new__(pipeline.VoiceAssistant)
+        assistant.calibrated_for_ambient_nosie = False
+        assistant.mic = unittest.mock.MagicMock()
+        steps = []
+        assistant.recognizer = SimpleNamespace(
+            energy_threshold=300,
+            adjust_for_ambient_noise=Mock(side_effect=lambda *a, **kw: steps.append("calibrate")),
+            listen=Mock(side_effect=lambda *a, **kw: steps.append("listen")),
+        )
+        with self.assertLogs(level="WARNING"):
+            for _ in range(4):
+                assistant._capture_command(lambda: steps.append("ready"))
+        self.assertEqual(steps, ["calibrate"] + ["ready", "listen"] * 4)
+        assistant.recognizer.adjust_for_ambient_noise.assert_called_once()
+        self.assertFalse(assistant.recognizer.dynamic_energy_threshold)
+        self.assertEqual(assistant.mic.__exit__.call_count, 4)
+
     async def transcribe_phrase(self, authorized=True, transcript=" spoken command ", timeout=False):
         pipeline = load_pipeline()
         class WaitTimeoutError(Exception):
             pass
         pipeline.sr.WaitTimeoutError = WaitTimeoutError
         assistant = pipeline.VoiceAssistant.__new__(pipeline.VoiceAssistant)
+        assistant.calibrated_for_ambient_nosie = False
         source = object()
         assistant.mic = unittest.mock.MagicMock()
         assistant.mic.__enter__.return_value = source
-        assistant.recognizer = SimpleNamespace(listen=Mock(
-            return_value="audio",
+        steps = []
+        assistant.recognizer = SimpleNamespace(energy_threshold=300, adjust_for_ambient_noise=Mock(
+            side_effect=lambda *args, **kwargs: steps.append("calibrated"),
+        ), listen=Mock(
+            return_value=SimpleNamespace(frame_data=bytes(32000), sample_rate=16000, sample_width=2),
             side_effect=WaitTimeoutError() if timeout else None,
         ))
         assistant.speaker_classifier = SimpleNamespace(authorized_speaker=Mock(return_value=authorized))
         assistant.asr_model = SimpleNamespace(transcribe=Mock(return_value=transcript))
         events = []
+        def receive_event(event):
+            events.append(event)
+            if event["data"]["text"].startswith("Listening..."):
+                self.assertIn("calibrated", steps)
+                self.assertIs(asyncio.get_running_loop(), event_loop)
+        event_loop = asyncio.get_running_loop()
         with (
             patch.object(pipeline, "convert_audio_to_tensor", return_value="tensor"),
             patch.object(pipeline, "convert_audio_to_numpy", return_value="numpy"),
         ):
-            text = await assistant.transcribe_once(events.append)
-        assistant.recognizer.listen.assert_called_once_with(source, timeout=5, phrase_time_limit=30)
+            text = await assistant.transcribe_once(receive_event)
+        assistant.recognizer.adjust_for_ambient_noise.assert_called_once_with(source, duration=1.0)
+        assistant.recognizer.listen.assert_called_once_with(source, timeout=10, phrase_time_limit=30)
         assistant.mic.__exit__.assert_called_once()
         return text, events, assistant
 
@@ -75,6 +105,9 @@ class PipelineAsyncTests(unittest.IsolatedAsyncioTestCase):
         assistant.speaker_classifier.authorized_speaker.assert_called_once_with("tensor")
         assistant.asr_model.transcribe.assert_called_once_with("numpy")
         self.assertEqual(events[-1], {"type": "user_prompt", "data": {"text": text}})
+        self.assertTrue(events[0]["data"]["text"].startswith("Calibrating microphone"))
+        self.assertTrue(events[1]["data"]["text"].startswith("Listening..."))
+        self.assertIn("Captured 1.0s", events[2]["data"]["text"])
 
     async def test_single_phrase_rejected_speaker_skips_transcription(self):
         text, events, assistant = await self.transcribe_phrase(authorized=False)

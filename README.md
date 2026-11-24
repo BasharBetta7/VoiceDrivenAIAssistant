@@ -82,12 +82,20 @@ global hotkey. Use `/help` to list commands and Ctrl-D to exit.
 
 ## TODO:
 1. [x] Enhance the CLI : remove non-necessary WARNINGS and INFO logs from the stream.
-2. [x]Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
+2. [x] Fix the problem with LD_PRELOAD falling back to another version when not specified explicitly
 3. Create a secret phrase to launch the model, and sleep after long silence.
-4. Measure the metrics : latency, correctness. And traces : token usage, prices .. etc.
+4. [x] Measure the metrics : latency, correctness. And traces : token usage, prices .. etc.
+
+**UPDATED**: added correctness and helpfulness evaluators with langsmith.
 5. Implement TTS Module:
     - The inference is slow.
     - process output in batches.
 6. [ ] Fix the bug: when pressing F2 it fails every other time, with the message "Sorry, I didn't recognize your voice as authorized."
 7. [ ] Bug in the LLM: sometime when I ask to list the notes, it returns blank response. This might be a problem with qwen model.
-8. [ ] Memory management: Convert to CPU when necessary. 
+
+    **UPDATED**: starting new session solves the problem, so it is related to the model used (qwen3.5:4b)
+
+8. [ ] Memory management: Convert to CPU when necessary.
+9. [ ] Persistant Speaker Embeddings: this may leak, or get injected: Possible fixes:
+- encrypt the embedding file, and save the private key.
+10. Create a start-up phrase.
