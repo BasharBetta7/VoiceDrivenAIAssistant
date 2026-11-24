@@ -16,3 +16,6 @@ node_modules/
 AGENTS.md
 *.log
 .aurelious/
+.codex/
+.aws/
+.vscode/
