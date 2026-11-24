@@ -3,6 +3,7 @@ speaker_classifier:
   threshold: 0.45
   enroll_trials: 2
   enroll_duration: 10
+  speaker_embedding_path: "./.aurelious/speaker_embedding.pt"
 speech_recognizer:
   model_name: "Qwen/Qwen3-ASR-0.6B"
 llm_model:

@@ -31,7 +31,6 @@ from my_langsmith.config import ls_client
 
 DEFAULTS = {'model':'qwen3.5:4b',
             'temperature':0.3,
-            'max_tokens':2048,
             }
 
 class LLMChat:

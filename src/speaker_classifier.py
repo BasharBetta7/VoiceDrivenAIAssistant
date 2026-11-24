@@ -29,7 +29,11 @@ class SpeakerClassifier:
             config = {}
         self.model_path = config.get("model_path", DEFAULT_MODEL_PATH)
         self.spk_threshold = config.get("threshold", DEFAULT_THRESHOLD)
+        self.speaker_embedding_path = Path(config.get('speaker_embedding_path', "./.aurelious/speaker_embedding.pt"))
         self.authorized_speaker_embedding = None
+        if self.speaker_embedding_path.exists():
+            self.authorized_speaker_embedding = torch.load(self.speaker_embedding_path)
+            print(f"Speaker embeddings loaded from {self.speaker_embedding_path}")
         try:
             self.model = EncoderClassifier.from_hparams(source=self.model_path, savedir="pretrained_models/spkrec-ecapa-voxceleb")
         except:
@@ -39,9 +43,8 @@ class SpeakerClassifier:
     def enroll_speaker(self, n_trials:int = 1, duration:int= 5, threshold:float= DEFAULT_THRESHOLD) -> torch.tensor:
         """Enrolls new speaker after listening to multiple speech recordings"""
         if not self.authorized_speaker_embedding is None:
-            ans = input(f"A speaker voice has already been verified, Do you want to overwrite it ? (y,n)")
-            if ans == 'n':
-                return
+            ans = input(f"A speaker voice has already been verified!")
+            return
         print(f"You will be asked to speak {n_trials} times, each time you can say whatever you want for {duration} seconds, the model will save your voiceprint afterwards")
         embeddings = []
 
@@ -60,6 +63,8 @@ class SpeakerClassifier:
         res = torch.cat(embeddings, dim=0)
         res = F.normalize(res, p=2, dim=-1)
         self.authorized_speaker_embedding = F.normalize(res.mean(dim=0), dim=-1)
+        self.speaker_embedding_path.parent.mkdir(exist_ok=True)
+        torch.save(self.authorized_speaker_embedding, self.speaker_embedding_path)
         print(f"Finished Enrollment Procedure")
 
     

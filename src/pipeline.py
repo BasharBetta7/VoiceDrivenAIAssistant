@@ -3,6 +3,7 @@ from src.llm_model import LLMChat
 from src.asr_model import SpeechRecognizer
 from src.events import AgentEvent, EventHandler
 
+from pathlib import Path
 import speech_recognition as sr
 import asyncio
 import logging
@@ -13,9 +14,11 @@ class VoiceAssistant:
     def __init__(self, config:dict|None = None, llm=None):
         config = config or {}
         self.speaker_classifier = SpeakerClassifier(config.get('speaker_classifier'))
+        
         self.asr_model = SpeechRecognizer(config.get('speech_recognizer'))
         self.llm = llm if llm is not None else LLMChat(config.get('llm_model'))
-        self.speaker_classifier.enroll_speaker(n_trials=1, duration=10)
+        if self.speaker_classifier.authorized_speaker_embedding is None:
+            self.speaker_classifier.enroll_speaker(n_trials=1, duration=10)
         self.recognizer = sr.Recognizer()
         self.recognizer.pause_threshold= 1.0 #1 second pause
         self.mic = sr.Microphone(sample_rate=16000)
